@@ -18,8 +18,8 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Configure environment variable for backend URL
     - _Requirements: 2.1_
 
-- [ ] 2. User Input Interface
-  - [ ] 2.1 Create input form component
+- [x] 2. User Input Interface
+  - [x] 2.1 Create input form component
     - Build form with brand name, product name, description fields
     - Add duration slider (5-12 seconds)
     - Add aspect ratio selector (9:16, 1:1, 16:9)
@@ -29,7 +29,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Add image upload with drag-and-drop support
     - Validate image MIME types (jpeg, png, webp)
     - _Requirements: 1.2_
-  - [ ] 2.3 Create input validation utility
+  - [x] 2.3 Create input validation utility
     - Implement validateUserInput function
     - Validate required fields, duration range, aspect ratio options
     - Return structured error messages
