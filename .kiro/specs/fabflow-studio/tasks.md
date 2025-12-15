@@ -4,14 +4,14 @@
 
 Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
 
-- [-] 1. Project Setup and Configuration
-  - [-] 1.1 Initialize FastAPI backend project
+- [x] 1. Project Setup and Configuration
+  - [x] 1.1 Initialize FastAPI backend project
     - Create Python project with FastAPI, uvicorn
     - Set up environment variables (OPENAI_API_KEY, BRIA_API_KEY)
     - Configure CORS for frontend
     - Create requirements.txt with dependencies (fastapi, uvicorn, openai, httpx, python-multipart)
     - _Requirements: 7.1_
-  - [ ] 1.2 Initialize Next.js frontend project
+  - [x] 1.2 Initialize Next.js frontend project
     - Create Next.js app with App Router and TypeScript
     - Install axios for API calls
     - Install UI components (shadcn/ui)
