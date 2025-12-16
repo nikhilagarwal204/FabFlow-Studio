@@ -9,10 +9,13 @@ import asyncio
 import httpx
 import logging
 from functools import wraps
-from typing import Optional, TypeVar, Callable, Any
+from typing import Optional, TypeVar, Callable, Any, TYPE_CHECKING
 from pydantic import BaseModel
 
 from app.config import get_settings
+
+if TYPE_CHECKING:
+    from app.fibo_translator import FIBOStructuredPromptV2
 
 logger = logging.getLogger(__name__)
 
@@ -329,6 +332,88 @@ class FIBOClient:
             "aspect_ratio": aspect_ratio,
             "sync": True
         }
+        
+        async with httpx.AsyncClient(timeout=120.0) as client:
+            try:
+                response = await client.post(
+                    endpoint,
+                    headers=self.headers,
+                    json=payload
+                )
+                
+                if response.status_code == 401:
+                    raise FIBOAPIError(
+                        "Invalid FIBO API key",
+                        status_code=401
+                    )
+                
+                if response.status_code != 200 and response.status_code != 202:
+                    raise FIBOAPIError(
+                        f"FIBO API error: {response.text}",
+                        status_code=response.status_code
+                    )
+                
+                data = response.json()
+                
+                # Handle sync response - result is returned directly
+                result = data.get("result")
+                if result and len(result) > 0:
+                    urls = result[0].get("urls")
+                    if urls and len(urls) > 0:
+                        return FIBOGenerationResult(
+                            request_id=result[0].get("uuid", "sync-request"),
+                            image_url=urls[0]
+                        )
+                
+                # Fallback to async polling if sync didn't return result directly
+                request_id = data.get("sid")
+                status_url = data.get("status_url")
+                
+                if status_url:
+                    image_url = await self.poll_status(request_id or "unknown", status_url, client)
+                    return FIBOGenerationResult(
+                        request_id=request_id or "unknown",
+                        image_url=image_url
+                    )
+                
+                raise FIBOAPIError(
+                    f"Invalid response from FIBO API: {data}"
+                )
+                
+            except httpx.TimeoutException:
+                raise FIBOTimeoutError("Request to FIBO API timed out")
+            except httpx.RequestError as e:
+                raise FIBOError(f"Network error communicating with FIBO API: {str(e)}")
+
+    @with_retry(max_retries=3, base_delay=1.0, max_delay=10.0)
+    async def generate_with_structured_prompt(
+        self,
+        structured_prompt: "FIBOStructuredPromptV2",
+        aspect_ratio: str = "9:16"
+    ) -> FIBOGenerationResult:
+        """Generate an image using FIBO structured-prompt-generate endpoint.
+        
+        Uses the structured_prompt field in the API payload for deterministic
+        control over camera, lighting, composition, and style parameters.
+        
+        Args:
+            structured_prompt: FIBOStructuredPromptV2 with scene parameters.
+            aspect_ratio: Aspect ratio for the image (9:16, 1:1, 16:9).
+            
+        Returns:
+            FIBOGenerationResult with request_id and image_url.
+            
+        Raises:
+            FIBOAPIError: If the API returns an error response.
+            FIBOTimeoutError: If polling exceeds MAX_POLL_TIME.
+            FIBOError: For other errors.
+            
+        Requirements: 5.1
+        """
+        endpoint = f"{self.BASE_URL}/v1/text-to-image/base/2.3"
+        
+        # Use the structured prompt's to_api_payload method for proper formatting
+        payload = structured_prompt.to_api_payload(aspect_ratio)
         
         async with httpx.AsyncClient(timeout=120.0) as client:
             try:

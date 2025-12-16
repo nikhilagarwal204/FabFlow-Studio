@@ -17,7 +17,8 @@ import httpx
 from pydantic import BaseModel, Field
 
 from app.fibo_client import FIBOClient, FIBOError
-from app.models import Scene, Storyboard
+from app.models import Scene, Storyboard, SceneParameters, EnhancedStoryboard
+from app.fibo_translator import FIBOStructuredPromptV2
 
 
 class GeneratedFrame(BaseModel):
@@ -354,3 +355,247 @@ class FrameGeneratorService:
         for scene in storyboard.scenes:
             total += calculate_frame_count(scene.duration, fps)
         return total
+
+
+# =============================================================================
+# Enhanced Frame Generator (v2) - Uses FIBOStructuredPromptV2
+# =============================================================================
+
+
+class EnhancedGeneratedFrame(BaseModel):
+    """Represents a generated frame with parameter tracking for v2 pipeline.
+    
+    Extends GeneratedFrame with a parameters_hash for tracking which
+    parameters were used to generate the frame, enabling selective
+    regeneration when parameters change.
+    
+    Attributes:
+        scene_number: The scene this frame belongs to.
+        image_url: Remote URL of the generated image.
+        local_path: Local file path where the frame is stored.
+        parameters_hash: Hash of the SceneParameters used to generate this frame.
+    """
+    scene_number: int = Field(..., ge=1, description="Scene number (1-indexed)")
+    image_url: str = Field(..., description="Remote URL of generated image")
+    local_path: str = Field(..., description="Local file path for the frame")
+    parameters_hash: str = Field(..., description="Hash of parameters used for generation")
+
+
+class EnhancedFrameGenerator:
+    """Frame generator using FIBO structured prompts for v2 pipeline.
+    
+    Provides deterministic frame generation using FIBOStructuredPromptV2
+    and supports selective regeneration when parameters change.
+    
+    Attributes:
+        fibo_client: The FIBO API client instance.
+        base_output_dir: Base directory for storing generated frames.
+        
+    Requirements: 5.1, 5.2, 5.4
+    """
+    
+    def __init__(
+        self,
+        fibo_client: Optional[FIBOClient] = None,
+        base_output_dir: Optional[Path] = None
+    ):
+        """Initialize the enhanced frame generator.
+        
+        Args:
+            fibo_client: Optional FIBO client. Creates one if not provided.
+            base_output_dir: Base directory for frame storage.
+        """
+        self.fibo_client = fibo_client or FIBOClient()
+        self.base_output_dir = base_output_dir or Path("/tmp/fabflow")
+    
+    def _hash_parameters(self, scene: SceneParameters) -> str:
+        """Generate a hash of scene parameters for change detection.
+        
+        Args:
+            scene: SceneParameters to hash.
+            
+        Returns:
+            Hash string representing the parameter state.
+        """
+        import hashlib
+        import json
+        
+        # Create a deterministic JSON representation
+        param_dict = scene.model_dump(mode="json")
+        param_json = json.dumps(param_dict, sort_keys=True)
+        return hashlib.sha256(param_json.encode()).hexdigest()[:16]
+    
+    def create_job_directory(self, job_id: str) -> Path:
+        """Create a directory for a specific job's frames.
+        
+        Args:
+            job_id: Unique identifier for the job.
+            
+        Returns:
+            Path to the job's frame directory.
+        """
+        job_dir = self.base_output_dir / job_id / "frames"
+        job_dir.mkdir(parents=True, exist_ok=True)
+        return job_dir
+    
+    async def generate_frame_for_scene(
+        self,
+        scene: SceneParameters,
+        aspect_ratio: str,
+        output_dir: Path
+    ) -> EnhancedGeneratedFrame:
+        """Generate a single key frame using FIBO structured prompt.
+        
+        Translates SceneParameters to FIBOStructuredPromptV2 and calls
+        the FIBO API to generate the frame.
+        
+        Args:
+            scene: SceneParameters with camera, lighting, composition, style.
+            aspect_ratio: Target aspect ratio (9:16, 1:1, 16:9).
+            output_dir: Directory to store the generated frame.
+            
+        Returns:
+            EnhancedGeneratedFrame with image URL, local path, and parameter hash.
+            
+        Raises:
+            FIBOError: If frame generation fails.
+            
+        Requirements: 5.1, 5.2
+        """
+        # Translate SceneParameters to FIBO structured prompt
+        structured_prompt = FIBOStructuredPromptV2.from_scene_parameters(scene)
+        
+        # Generate the frame using the structured prompt
+        result = await self.fibo_client.generate_with_structured_prompt(
+            structured_prompt=structured_prompt,
+            aspect_ratio=aspect_ratio
+        )
+        
+        # Create local path for the frame
+        frame_filename = f"scene_{scene.scene_number:02d}_frame_00.png"
+        local_path = output_dir / frame_filename
+        
+        # Download the generated image
+        download_success = await download_image(result.image_url, local_path)
+        
+        if not download_success:
+            raise FIBOError(
+                f"Failed to download frame for scene {scene.scene_number}",
+                code="DOWNLOAD_ERROR",
+                retryable=True
+            )
+        
+        return EnhancedGeneratedFrame(
+            scene_number=scene.scene_number,
+            image_url=result.image_url,
+            local_path=str(local_path),
+            parameters_hash=self._hash_parameters(scene)
+        )
+    
+    async def generate_all_frames(
+        self,
+        storyboard: EnhancedStoryboard,
+        job_id: Optional[str] = None
+    ) -> FrameGenerationResult:
+        """Generate frames for all scenes in an enhanced storyboard.
+        
+        Processes each scene sequentially to generate key frames using
+        structured prompts. Frames are stored in sequential order.
+        
+        Args:
+            storyboard: EnhancedStoryboard with SceneParameters.
+            job_id: Optional job ID. Generates one if not provided.
+            
+        Returns:
+            FrameGenerationResult with all generated frames or errors.
+            
+        Requirements: 5.2, 5.4
+        """
+        if job_id is None:
+            job_id = str(uuid.uuid4())
+        
+        output_dir = self.create_job_directory(job_id)
+        
+        all_frames: list[GeneratedFrame] = []
+        all_errors: list[str] = []
+        
+        # Process scenes sequentially to maintain order (Requirement 5.4)
+        for scene in storyboard.scenes:
+            try:
+                frame = await self.generate_frame_for_scene(
+                    scene=scene,
+                    aspect_ratio=storyboard.aspect_ratio,
+                    output_dir=output_dir
+                )
+                # Convert EnhancedGeneratedFrame to GeneratedFrame for compatibility
+                all_frames.append(GeneratedFrame(
+                    scene_number=frame.scene_number,
+                    frame_index=0,
+                    image_url=frame.image_url,
+                    local_path=frame.local_path
+                ))
+            except FIBOError as e:
+                all_errors.append(f"Scene {scene.scene_number}: {e.message}")
+            except Exception as e:
+                all_errors.append(f"Scene {scene.scene_number}: Unexpected error - {str(e)}")
+        
+        # Sort frames by scene number to ensure sequential order
+        all_frames.sort(key=lambda f: f.scene_number)
+        
+        return FrameGenerationResult(
+            success=len(all_errors) == 0,
+            frames=all_frames,
+            errors=all_errors
+        )
+    
+    async def regenerate_modified_frames(
+        self,
+        storyboard: EnhancedStoryboard,
+        scenes_to_regenerate: list[int],
+        existing_frames: dict[int, EnhancedGeneratedFrame],
+        job_id: str
+    ) -> dict[int, EnhancedGeneratedFrame]:
+        """Regenerate only the frames for modified scenes.
+        
+        Preserves existing frames for unchanged scenes and only regenerates
+        frames for scenes in the scenes_to_regenerate list.
+        
+        Args:
+            storyboard: EnhancedStoryboard with updated SceneParameters.
+            scenes_to_regenerate: List of scene numbers that need regeneration.
+            existing_frames: Dictionary mapping scene numbers to existing frames.
+            job_id: Job ID for output directory.
+            
+        Returns:
+            Dictionary mapping scene numbers to frames (mix of existing and new).
+            
+        Requirements: 5.2, 5.4
+        """
+        output_dir = self.create_job_directory(job_id)
+        
+        # Start with existing frames
+        frames = existing_frames.copy()
+        
+        # Regenerate only the modified scenes
+        for scene_num in scenes_to_regenerate:
+            # Find the scene with this number
+            scene = next(
+                (s for s in storyboard.scenes if s.scene_number == scene_num),
+                None
+            )
+            
+            if scene is None:
+                continue
+            
+            try:
+                new_frame = await self.generate_frame_for_scene(
+                    scene=scene,
+                    aspect_ratio=storyboard.aspect_ratio,
+                    output_dir=output_dir
+                )
+                frames[scene_num] = new_frame
+            except FIBOError:
+                # Keep existing frame if regeneration fails
+                pass
+        
+        return frames

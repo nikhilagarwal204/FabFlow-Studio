@@ -57,12 +57,12 @@ This plan enhances FabFlow Studio to leverage FIBO's JSON-native architecture fo
     - **Property 8: Parameter Modification Preserves Unchanged Fields**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
 
-- [ ] 6. Enhanced Frame Generator
-  - [ ] 6.1 Update FIBO client for structured prompt generation
+- [x] 6. Enhanced Frame Generator
+  - [x] 6.1 Update FIBO client for structured prompt generation
     - Add generate_with_structured_prompt() method
     - Use structured_prompt field in API payload
     - _Requirements: 5.1_
-  - [ ] 6.2 Create EnhancedFrameGenerator service
+  - [x] 6.2 Create EnhancedFrameGenerator service
     - Implement generate_frame_for_scene() using structured prompts
     - Implement regenerate_modified_frames() for parameter changes
     - _Requirements: 5.2, 5.4_
