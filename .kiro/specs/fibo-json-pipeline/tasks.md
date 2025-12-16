@@ -44,11 +44,11 @@ This plan enhances FabFlow Studio to leverage FIBO's JSON-native architecture fo
     - **Property 2: Duration Distribution Sums to Total**
     - **Validates: Requirements 1.4**
 
-- [ ] 4. Checkpoint - Ensure all tests pass
+- [x] 4. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 5. Parameter Modification Service
-  - [ ] 5.1 Create parameter modification models and service
+- [x] 5. Parameter Modification Service
+  - [x] 5.1 Create parameter modification models and service
     - Create ParameterModification request model
     - Create ModificationResult response model
     - Implement apply_parameter_modification() function
