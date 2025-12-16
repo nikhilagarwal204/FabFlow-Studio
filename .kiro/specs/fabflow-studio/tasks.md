@@ -35,17 +35,17 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Return structured error messages
     - _Requirements: 1.1, 1.3, 1.5_
 
-- [ ] 3. Storyboard Generation (Backend)
-  - [ ] 3.1 Create Pydantic models for storyboard
+- [x] 3. Storyboard Generation (Backend)
+  - [x] 3.1 Create Pydantic models for storyboard
     - Define Scene, FIBOPrompt, Storyboard, UserInput models
     - Add validation for duration (5-12), aspect ratio options
     - _Requirements: 2.1, 2.2, 2.5_
-  - [ ] 3.2 Create OpenAI storyboard generator
+  - [x] 3.2 Create OpenAI storyboard generator
     - Build prompt template for ad storyboard generation
     - Use OpenAI response_format for structured JSON output
     - Parse response into Storyboard model
     - _Requirements: 2.1, 2.2, 2.6, 2.7_
-  - [ ] 3.3 Create /api/generate-storyboard endpoint
+  - [x] 3.3 Create /api/generate-storyboard endpoint
     - POST endpoint accepting UserInput
     - Return Storyboard JSON
     - Handle OpenAI errors gracefully
