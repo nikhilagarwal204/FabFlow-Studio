@@ -18,8 +18,8 @@ This plan enhances FabFlow Studio to leverage FIBO's JSON-native architecture fo
     - **Property 5: Scene Parameters Round-Trip**
     - **Validates: Requirements 2.6**
 
-- [ ] 2. FIBO Structured Prompt Translator
-  - [ ] 2.1 Create FIBOStructuredPromptV2 translator class
+- [-] 2. FIBO Structured Prompt Translator
+  - [x] 2.1 Create FIBOStructuredPromptV2 translator class
     - Implement from_scene_parameters() class method
     - Implement to_api_payload() method for FIBO API format
     - Map all parameter fields to FIBO JSON structure
