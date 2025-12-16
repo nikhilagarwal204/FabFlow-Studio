@@ -81,8 +81,8 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Download and store frames locally
     - _Requirements: 4.1, 4.2, 4.4_
 
-- [ ] 6. Video Compositing (Backend)
-  - [ ] 6.1 Create FFmpeg compositing engine
+- [x] 6. Video Compositing (Backend)
+  - [x] 6.1 Create FFmpeg compositing engine
     - Install FFmpeg on server (add to Dockerfile/requirements)
     - Scale frames to correct aspect ratio dimensions
     - Create video from frames with scene durations
@@ -91,7 +91,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
   - [ ]* 6.2 Add transition effects
     - Apply fade transitions between scenes using FFmpeg filters
     - _Requirements: 5.2_
-  - [ ] 6.3 Create /api/generate-video endpoint
+  - [x] 6.3 Create /api/generate-video endpoint
     - Full pipeline: storyboard -> frames -> video
     - Return job_id for progress polling
     - Serve final video file
