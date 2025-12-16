@@ -1,10 +1,11 @@
 """Video Compositor for FabFlow Studio.
 
 Assembles generated frames into a final video using FFmpeg.
-Handles frame scaling, scene duration, and MP4 output.
+Handles frame scaling, scene duration, transitions, and MP4 output.
 
 Requirements:
 - 5.1: Compositing_Engine SHALL assemble frames into a single video file
+- 5.2: Compositing_Engine SHALL apply transition effects between scenes
 - 5.3: Compositing_Engine SHALL output video in MP4 format suitable for Instagram
 - 5.5: Compositing_Engine SHALL match user-selected aspect ratio for final output
 - 5.6: Compositing_Engine SHALL produce output matching user-selected duration (5-12 seconds)
@@ -47,10 +48,43 @@ def check_ffmpeg_available() -> bool:
     return shutil.which("ffmpeg") is not None
 
 
+def get_xfade_transition(transition_type: str) -> str:
+    """Map storyboard transition type to FFmpeg xfade transition name.
+    
+    Args:
+        transition_type: Transition type from storyboard ('fade', 'dissolve', 'cut', 'slide').
+        
+    Returns:
+        FFmpeg xfade transition name.
+    """
+    transition_map = {
+        "fade": "fade",
+        "dissolve": "dissolve",
+        "cut": "fade",  # Use very short fade for cut effect
+        "slide": "slideleft",
+    }
+    return transition_map.get(transition_type, "fade")
+
+
+def get_transition_duration(transition_type: str) -> float:
+    """Get the duration for a transition effect.
+    
+    Args:
+        transition_type: Transition type from storyboard.
+        
+    Returns:
+        Duration in seconds for the transition.
+    """
+    if transition_type == "cut":
+        return 0.1  # Very short for cut effect
+    return 0.5  # Standard transition duration
+
+
 def build_ffmpeg_command(
     frames: list[GeneratedFrame],
     storyboard: Storyboard,
-    output_path: Path
+    output_path: Path,
+    enable_transitions: bool = True
 ) -> list[str]:
     """Build FFmpeg command for video compositing.
     
@@ -58,18 +92,20 @@ def build_ffmpeg_command(
     1. Takes each frame as input
     2. Scales to correct dimensions for aspect ratio
     3. Sets duration for each frame based on scene duration
-    4. Concatenates all frames into a single video
-    5. Outputs MP4 with H.264 codec
+    4. Applies transition effects between scenes (fade, dissolve, slide)
+    5. Concatenates all frames into a single video
+    6. Outputs MP4 with H.264 codec
     
     Args:
         frames: List of generated frames (one per scene).
         storyboard: Storyboard with scene durations and aspect ratio.
         output_path: Path for the output video file.
+        enable_transitions: Whether to apply transition effects between scenes.
         
     Returns:
         FFmpeg command as list of arguments.
         
-    Requirements: 5.1, 5.3, 5.5, 5.6
+    Requirements: 5.1, 5.2, 5.3, 5.5, 5.6
     """
     width, height = get_dimensions_for_aspect_ratio(storyboard.aspect_ratio)
     
@@ -79,22 +115,65 @@ def build_ffmpeg_command(
         inputs.extend(["-loop", "1", "-i", frame.local_path])
     
     # Build filter complex for scaling and duration
-    # Each frame gets scaled and shown for its scene duration
     filter_parts = []
-    concat_inputs = []
     
     for i, (frame, scene) in enumerate(zip(frames, storyboard.scenes)):
         # Scale each input to target dimensions and set duration
         filter_parts.append(
             f"[{i}:v]scale={width}:{height}:force_original_aspect_ratio=decrease,"
             f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black,"
-            f"setsar=1,fps=24,trim=duration={scene.duration}[v{i}]"
+            f"setsar=1,fps=24,trim=duration={scene.duration},setpts=PTS-STARTPTS[v{i}]"
         )
-        concat_inputs.append(f"[v{i}]")
     
-    # Concatenate all processed clips
-    concat_filter = "".join(concat_inputs) + f"concat=n={len(frames)}:v=1:a=0[outv]"
-    filter_complex = ";".join(filter_parts) + ";" + concat_filter
+    if enable_transitions and len(frames) > 1:
+        # Apply xfade transitions between consecutive clips
+        # xfade requires chaining: v0 xfade v1 -> tmp0, tmp0 xfade v2 -> tmp1, etc.
+        # 
+        # The offset parameter in xfade specifies when the transition starts
+        # relative to the START of the output stream (not the current clip).
+        # After each xfade, the output duration is:
+        #   duration_clip1 + duration_clip2 - transition_duration
+        xfade_parts = []
+        current_input = "[v0]"
+        
+        # Track the cumulative duration of the output stream
+        cumulative_duration = storyboard.scenes[0].duration
+        
+        for i in range(len(frames) - 1):
+            scene = storyboard.scenes[i]
+            next_scene = storyboard.scenes[i + 1]
+            transition_type = scene.transition
+            xfade_name = get_xfade_transition(transition_type)
+            transition_duration = get_transition_duration(transition_type)
+            
+            # Offset is where the transition starts in the output stream
+            # It should be: cumulative_duration - transition_duration
+            # This means the transition starts transition_duration seconds before
+            # the current clip ends
+            offset = cumulative_duration - transition_duration
+            
+            # Ensure offset is not negative (for very short scenes)
+            offset = max(0, offset)
+            
+            next_input = f"[v{i + 1}]"
+            output_label = f"[xf{i}]" if i < len(frames) - 2 else "[outv]"
+            
+            xfade_parts.append(
+                f"{current_input}{next_input}xfade=transition={xfade_name}:"
+                f"duration={transition_duration}:offset={offset:.2f}{output_label}"
+            )
+            
+            current_input = f"[xf{i}]"
+            
+            # Update cumulative duration: add next scene duration minus overlap
+            cumulative_duration = offset + next_scene.duration
+        
+        filter_complex = ";".join(filter_parts) + ";" + ";".join(xfade_parts)
+    else:
+        # No transitions - simple concatenation
+        concat_inputs = "".join(f"[v{i}]" for i in range(len(frames)))
+        concat_filter = f"{concat_inputs}concat=n={len(frames)}:v=1:a=0[outv]"
+        filter_complex = ";".join(filter_parts) + ";" + concat_filter
     
     # Build complete command
     cmd = ["ffmpeg", "-y"]  # -y to overwrite output
@@ -124,6 +203,7 @@ async def composite_video(
     Takes generated frames and creates an MP4 video with:
     - Correct aspect ratio dimensions
     - Scene durations as specified in storyboard
+    - Transition effects between scenes (fade, dissolve, slide)
     - H.264 codec for Instagram compatibility
     
     Args:
@@ -135,7 +215,7 @@ async def composite_video(
     Returns:
         CompositeResult with video path/URL or error.
         
-    Requirements: 5.1, 5.3, 5.5, 5.6
+    Requirements: 5.1, 5.2, 5.3, 5.5, 5.6
     """
     # Validate inputs
     if not frames:
@@ -264,17 +344,17 @@ class VideoCompositorService:
         storyboard: Storyboard,
         job_id: str
     ) -> CompositeResult:
-        """Composite frames into a video.
+        """Composite frames into a video with transitions.
         
         Args:
             frames: List of generated frames.
-            storyboard: Storyboard with scene information.
+            storyboard: Storyboard with scene information and transitions.
             job_id: Unique job identifier.
             
         Returns:
             CompositeResult with video path/URL or error.
             
-        Requirements: 5.1, 5.3, 5.5, 5.6
+        Requirements: 5.1, 5.2, 5.3, 5.5, 5.6
         """
         output_dir = self.get_video_output_dir(job_id)
         return await composite_video(frames, storyboard, output_dir, job_id)

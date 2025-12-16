@@ -88,7 +88,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Render)
     - Create video from frames with scene durations
     - Output MP4 file
     - _Requirements: 5.1, 5.3, 5.5, 5.6_
-  - [ ] 6.2 Add transition effects
+  - [x] 6.2 Add transition effects
     - Apply fade transitions between scenes using FFmpeg filters
     - _Requirements: 5.2_
   - [x] 6.3 Create /api/generate-video endpoint
