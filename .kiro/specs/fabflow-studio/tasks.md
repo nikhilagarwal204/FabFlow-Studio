@@ -118,7 +118,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Render)
     - Display final video with playback controls
     - Provide download button
     - _Requirements: 5.4, 6.4_
-  - [ ] 8.3 Implement error handling UI
+  - [x] 8.3 Implement error handling UI
     - Display user-friendly error messages
     - Provide retry options
     - _Requirements: 6.3_
@@ -129,7 +129,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Render)
     - Poll job status and update progress UI
     - Display video when complete
     - _Requirements: 1.4, 6.4_
-  - [ ]* 9.2 Deploy backend to Render
+  - [x] 9.2 Deploy backend to Render
     - Create Dockerfile with FFmpeg
     - Configure environment variables
     - Test full pipeline

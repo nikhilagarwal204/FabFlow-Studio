@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { VideoInputForm } from "@/components/VideoInputForm";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { VideoPlayer } from "@/components/VideoPlayer";
+import { ErrorDisplay } from "@/components/ErrorDisplay";
 import api from "@/lib/api";
 import type { UserInput } from "@/lib/validation";
 
@@ -107,27 +108,10 @@ export default function Home() {
 
         {/* Error State */}
         {appState === "error" && (
-          <div className="w-full max-w-lg rounded-lg border border-red-200 bg-red-50 p-6 dark:border-red-900 dark:bg-red-950">
-            <div className="flex flex-col items-center gap-4 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900">
-                <span className="text-2xl">⚠️</span>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-red-800 dark:text-red-200">
-                  Something went wrong
-                </h3>
-                <p className="mt-1 text-sm text-red-600 dark:text-red-400">
-                  {error || "An unexpected error occurred"}
-                </p>
-              </div>
-              <button
-                onClick={handleReset}
-                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
-              >
-                Try Again
-              </button>
-            </div>
-          </div>
+          <ErrorDisplay
+            error={error || "An unexpected error occurred"}
+            onRetry={handleReset}
+          />
         )}
       </main>
     </div>
