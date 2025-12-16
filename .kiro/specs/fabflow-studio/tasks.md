@@ -55,8 +55,8 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Show camera angle, lighting, duration for each scene
     - _Requirements: 2.4_
 
-- [ ] 4. FIBO API Integration (Backend)
-  - [ ] 4.1 Create FIBO API client class
+- [x] 4. FIBO API Integration (Backend)
+  - [x] 4.1 Create FIBO API client class
     - Implement generate_image method for text-to-image
     - Implement poll_status method for async responses
     - Handle API errors and timeouts
