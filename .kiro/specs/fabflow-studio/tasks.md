@@ -50,7 +50,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Render)
     - Return Storyboard JSON
     - Handle OpenAI errors gracefully
     - _Requirements: 1.4, 2.1_
-  - [ ] 3.4 Create storyboard preview component (Frontend)
+  - [x] 3.4 Create storyboard preview component (Frontend)
     - Display generated scenes with descriptions
     - Show camera angle, lighting, duration for each scene
     - _Requirements: 2.4_
