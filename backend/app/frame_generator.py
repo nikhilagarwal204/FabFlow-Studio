@@ -558,7 +558,8 @@ class EnhancedFrameGenerator:
         """Regenerate only the frames for modified scenes.
         
         Preserves existing frames for unchanged scenes and only regenerates
-        frames for scenes in the scenes_to_regenerate list.
+        frames for scenes in the scenes_to_regenerate list. If existing frames
+        are missing for any scene, those will also be generated.
         
         Args:
             storyboard: EnhancedStoryboard with updated SceneParameters.
@@ -576,8 +577,17 @@ class EnhancedFrameGenerator:
         # Start with existing frames
         frames = existing_frames.copy()
         
-        # Regenerate only the modified scenes
-        for scene_num in scenes_to_regenerate:
+        # Determine all scenes that need generation (modified + missing)
+        all_scene_numbers = {s.scene_number for s in storyboard.scenes}
+        scenes_needing_generation = set(scenes_to_regenerate)
+        
+        # Add any missing scenes that aren't in existing_frames
+        for scene_num in all_scene_numbers:
+            if scene_num not in frames:
+                scenes_needing_generation.add(scene_num)
+        
+        # Generate/regenerate the needed scenes
+        for scene_num in scenes_needing_generation:
             # Find the scene with this number
             scene = next(
                 (s for s in storyboard.scenes if s.scene_number == scene_num),
@@ -595,7 +605,8 @@ class EnhancedFrameGenerator:
                 )
                 frames[scene_num] = new_frame
             except FIBOError:
-                # Keep existing frame if regeneration fails
-                pass
+                # Keep existing frame if regeneration fails and one exists
+                if scene_num not in frames:
+                    raise  # Re-raise if we don't have a fallback
         
         return frames

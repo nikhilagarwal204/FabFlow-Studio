@@ -127,4 +127,11 @@ export async function getJobResult(jobId: string): Promise<JobResult> {
   return response.data;
 }
 
+export async function regenerateVideo(jobId: string, scenesToRegenerate: number[]): Promise<{ job_id: string; message: string }> {
+  const response = await api.post<{ job_id: string; message: string }>(`/api/v2/regenerate-video/${jobId}`, {
+    scenes_to_regenerate: scenesToRegenerate,
+  });
+  return response.data;
+}
+
 export default api;

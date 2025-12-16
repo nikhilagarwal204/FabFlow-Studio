@@ -539,6 +539,17 @@ async def run_video_generation_pipeline_v2(job_id: str, user_input: EnhancedUser
             )
             return
         
+        # Store frames for later regeneration (convert to EnhancedGeneratedFrame dict)
+        job_enhanced_frames[job_id] = {
+            frame.scene_number: EnhancedGeneratedFrame(
+                scene_number=frame.scene_number,
+                image_url=frame.image_url,
+                local_path=frame.local_path,
+                parameters_hash=""  # Will be computed on regeneration
+            )
+            for frame in frame_result.frames
+        }
+        
         jobs[job_id] = JobStatus(
             job_id=job_id,
             stage="frame-generation",
@@ -766,6 +777,193 @@ async def regenerate_frames_for_modification(
             progress=0,
             message="Frame regeneration failed",
             error=str(e)
+        )
+
+
+class RegenerateVideoRequest(BaseModel):
+    """Request to regenerate video with modified frames."""
+    scenes_to_regenerate: list[int] = []  # Empty means regenerate all modified
+
+
+@app.post("/api/v2/regenerate-video/{job_id}")
+async def regenerate_video_endpoint(
+    job_id: str,
+    request: RegenerateVideoRequest,
+    background_tasks: BackgroundTasks
+) -> dict:
+    """Regenerate video with modified frame parameters.
+    
+    Regenerates only the specified frames (or all modified frames),
+    then recomposites the video with the new frames.
+    
+    Args:
+        job_id: Original job identifier.
+        request: Scenes to regenerate.
+        background_tasks: FastAPI background tasks handler.
+        
+    Returns:
+        Dictionary with new job_id for polling progress.
+        
+    Raises:
+        HTTPException: If job not found.
+        
+    Requirements: 4.1, 4.2, 4.3, 4.4
+    """
+    if job_id not in job_enhanced_storyboards:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": "JOB_NOT_FOUND",
+                "message": f"Job {job_id} not found or not a v2 job"
+            }
+        )
+    
+    # Create a new job for the regeneration
+    new_job_id = str(uuid.uuid4())
+    
+    # Copy the storyboard to the new job
+    storyboard = job_enhanced_storyboards[job_id]
+    job_enhanced_storyboards[new_job_id] = storyboard
+    
+    # Initialize job status
+    jobs[new_job_id] = JobStatus(
+        job_id=new_job_id,
+        stage="queued",
+        progress=0,
+        message="Regeneration job queued"
+    )
+    
+    # Determine which scenes to regenerate
+    scenes = request.scenes_to_regenerate if request.scenes_to_regenerate else list(range(1, len(storyboard.scenes) + 1))
+    
+    # Start background task
+    background_tasks.add_task(
+        run_video_regeneration_pipeline,
+        new_job_id,
+        job_id,
+        storyboard,
+        scenes
+    )
+    
+    return {"job_id": new_job_id, "message": f"Video regeneration started for {len(scenes)} scenes"}
+
+
+async def run_video_regeneration_pipeline(
+    new_job_id: str,
+    original_job_id: str,
+    storyboard: EnhancedStoryboard,
+    scenes_to_regenerate: list[int]
+):
+    """Background task to regenerate frames and recomposite video.
+    
+    Args:
+        new_job_id: New job identifier for this regeneration.
+        original_job_id: Original job identifier (for existing frames).
+        storyboard: Modified storyboard with updated parameters.
+        scenes_to_regenerate: List of scene numbers to regenerate.
+        
+    Requirements: 4.1, 4.2, 4.3, 4.4, 5.2, 5.4
+    """
+    try:
+        # Stage 1: Regenerate frames
+        jobs[new_job_id] = JobStatus(
+            job_id=new_job_id,
+            stage="frame-generation",
+            progress=20,
+            message=f"Regenerating {len(scenes_to_regenerate)} frames..."
+        )
+        
+        frame_generator = get_enhanced_frame_generator()
+        
+        # Get existing frames from original job if available
+        existing_frames = job_enhanced_frames.get(original_job_id, {})
+        
+        # Regenerate the modified frames
+        updated_frames = await frame_generator.regenerate_modified_frames(
+            storyboard=storyboard,
+            scenes_to_regenerate=scenes_to_regenerate,
+            existing_frames=existing_frames,
+            job_id=new_job_id
+        )
+        
+        # Store updated frames for new job
+        job_enhanced_frames[new_job_id] = updated_frames
+        
+        jobs[new_job_id] = JobStatus(
+            job_id=new_job_id,
+            stage="frame-generation",
+            progress=70,
+            message=f"Regenerated {len(scenes_to_regenerate)} frames"
+        )
+        
+        # Stage 2: Recomposite video
+        jobs[new_job_id] = JobStatus(
+            job_id=new_job_id,
+            stage="compositing",
+            progress=75,
+            message="Compositing video with new frames..."
+        )
+        
+        # Convert EnhancedGeneratedFrame dict to GeneratedFrame list for compositor
+        frames_list = [
+            GeneratedFrame(
+                scene_number=updated_frames[i].scene_number,
+                frame_index=0,
+                image_url=updated_frames[i].image_url,
+                local_path=updated_frames[i].local_path
+            )
+            for i in sorted(updated_frames.keys())
+        ]
+        
+        composite_result = await get_video_compositor_service().composite(
+            frames=frames_list,
+            storyboard=storyboard,
+            job_id=new_job_id
+        )
+        
+        if not composite_result.success:
+            jobs[new_job_id] = JobStatus(
+                job_id=new_job_id,
+                stage="error",
+                progress=0,
+                message="Video compositing failed",
+                error=composite_result.error
+            )
+            job_results[new_job_id] = JobResult(
+                job_id=new_job_id,
+                success=False,
+                error=composite_result.error
+            )
+            return
+        
+        # Complete
+        jobs[new_job_id] = JobStatus(
+            job_id=new_job_id,
+            stage="complete",
+            progress=100,
+            message="Video regeneration complete"
+        )
+        
+        job_results[new_job_id] = JobResult(
+            job_id=new_job_id,
+            success=True,
+            video_url=composite_result.video_url,
+            duration=composite_result.duration
+        )
+        
+    except Exception as e:
+        error_msg = str(e)
+        jobs[new_job_id] = JobStatus(
+            job_id=new_job_id,
+            stage="error",
+            progress=0,
+            message="Regeneration pipeline failed",
+            error=error_msg
+        )
+        job_results[new_job_id] = JobResult(
+            job_id=new_job_id,
+            success=False,
+            error=error_msg
         )
 
 

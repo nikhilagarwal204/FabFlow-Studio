@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SceneParameterCard } from "./SceneParameterCard";
-import { getJobParameters, modifyParameter, generateVideoV2, type EnhancedStoryboard, type EnhancedUserInputPayload } from "@/lib/api";
+import { getJobParameters, modifyParameter, regenerateVideo, getJobStatus, getJobResult, type EnhancedStoryboard, api } from "@/lib/api";
 
 interface VideoCompletionViewProps {
   videoUrl: string;
@@ -25,9 +25,14 @@ export function VideoCompletionView({
   onRegenerateComplete,
 }: VideoCompletionViewProps) {
   const videoRef = React.useRef<HTMLVideoElement>(null);
+  const [currentVideoUrl, setCurrentVideoUrl] = React.useState(videoUrl);
+  const [currentJobId, setCurrentJobId] = React.useState(jobId);
   const [storyboard, setStoryboard] = React.useState<EnhancedStoryboard | null>(null);
   const [isLoadingParams, setIsLoadingParams] = React.useState(false);
   const [isModifying, setIsModifying] = React.useState(false);
+  const [isRegenerating, setIsRegenerating] = React.useState(false);
+  const [regenerationProgress, setRegenerationProgress] = React.useState(0);
+  const [regenerationMessage, setRegenerationMessage] = React.useState("");
   const [modifiedScenes, setModifiedScenes] = React.useState<Set<number>>(new Set());
   const [error, setError] = React.useState<string | null>(null);
 
@@ -82,14 +87,64 @@ export function VideoCompletionView({
   const handleRegenerateVideo = async () => {
     if (!storyboard || modifiedScenes.size === 0) return;
 
-    onRegenerating?.();
-    // The parent component should handle the regeneration flow
-    // by starting a new job with the modified parameters
+    setIsRegenerating(true);
+    setError(null);
+    setRegenerationProgress(0);
+    setRegenerationMessage("Starting regeneration...");
+
+    try {
+      // Start regeneration job
+      const scenesToRegenerate = Array.from(modifiedScenes);
+      const result = await regenerateVideo(currentJobId, scenesToRegenerate);
+      const newJobId = result.job_id;
+
+      // Poll for completion
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await getJobStatus(newJobId);
+          setRegenerationProgress(status.progress);
+          setRegenerationMessage(status.message);
+
+          if (status.stage === "complete") {
+            clearInterval(pollInterval);
+            // Get the result
+            const jobResult = await getJobResult(newJobId);
+            if (jobResult.success && jobResult.video_url) {
+              // Construct full URL from the API base URL
+              const baseUrl = api.defaults.baseURL || "http://localhost:8000";
+              const fullVideoUrl = jobResult.video_url.startsWith("http") 
+                ? jobResult.video_url 
+                : `${baseUrl}${jobResult.video_url}`;
+              setCurrentVideoUrl(fullVideoUrl);
+              setCurrentJobId(newJobId);
+              setModifiedScenes(new Set());
+              setIsRegenerating(false);
+              // Refresh parameters for new job
+              const params = await getJobParameters(newJobId);
+              setStoryboard(params);
+            }
+          } else if (status.stage === "error") {
+            clearInterval(pollInterval);
+            setError(status.error || "Regeneration failed");
+            setIsRegenerating(false);
+          }
+        } catch (err) {
+          clearInterval(pollInterval);
+          setError("Failed to check regeneration status");
+          setIsRegenerating(false);
+        }
+      }, 1500);
+
+    } catch (err) {
+      console.error("Failed to start regeneration:", err);
+      setError("Failed to start video regeneration");
+      setIsRegenerating(false);
+    }
   };
 
   const handleDownload = async () => {
     try {
-      const response = await fetch(videoUrl);
+      const response = await fetch(currentVideoUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -101,7 +156,7 @@ export function VideoCompletionView({
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error("Download failed:", error);
-      window.open(videoUrl, "_blank");
+      window.open(currentVideoUrl, "_blank");
     }
   };
 
@@ -111,15 +166,41 @@ export function VideoCompletionView({
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <span className="text-green-500">✓</span>
-            Your Video is Ready
+            {isRegenerating ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
+                Regenerating Video...
+              </>
+            ) : (
+              <>
+                <span className="text-green-500">✓</span>
+                Your Video is Ready
+              </>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Regeneration Progress */}
+          {isRegenerating && (
+            <div className="space-y-2 p-4 bg-muted rounded-lg">
+              <div className="flex justify-between text-sm">
+                <span>{regenerationMessage}</span>
+                <span>{regenerationProgress}%</span>
+              </div>
+              <div className="w-full bg-background rounded-full h-2">
+                <div
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${regenerationProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
           <div className="overflow-hidden rounded-lg bg-black">
             <video
+              key={currentVideoUrl}
               ref={videoRef}
-              src={videoUrl}
+              src={currentVideoUrl}
               controls
               autoPlay
               loop
@@ -131,11 +212,11 @@ export function VideoCompletionView({
           </div>
 
           <div className="flex gap-3">
-            <Button onClick={handleDownload} className="flex-1">
+            <Button onClick={handleDownload} className="flex-1" disabled={isRegenerating}>
               <DownloadIcon className="mr-2 h-4 w-4" />
               Download Video
             </Button>
-            <Button variant="outline" onClick={onReset} className="flex-1">
+            <Button variant="outline" onClick={onReset} className="flex-1" disabled={isRegenerating}>
               Create Another
             </Button>
           </div>
@@ -215,9 +296,18 @@ export function VideoCompletionView({
                     <p className="text-sm text-muted-foreground">
                       {modifiedScenes.size} scene(s) have been modified and need regeneration.
                     </p>
-                    <Button onClick={handleRegenerateVideo} disabled={isModifying}>
-                      <RefreshIcon className="mr-2 h-4 w-4" />
-                      Regenerate Frames
+                    <Button onClick={handleRegenerateVideo} disabled={isModifying || isRegenerating}>
+                      {isRegenerating ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                          Regenerating...
+                        </>
+                      ) : (
+                        <>
+                          <RefreshIcon className="mr-2 h-4 w-4" />
+                          Regenerate Frames
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}
