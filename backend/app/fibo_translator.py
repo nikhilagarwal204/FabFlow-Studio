@@ -75,8 +75,8 @@ class FIBOStructuredPromptV2(BaseModel):
     def to_api_payload(self, aspect_ratio: str = "9:16") -> dict:
         """Convert to FIBO API request payload.
         
-        Builds the complete request payload for FIBO's structured-prompt-generate
-        endpoint, including the structured_prompt object and generation parameters.
+        Builds the complete request payload for FIBO's text-to-image endpoint,
+        including a prompt field constructed from the structured parameters.
         
         Args:
             aspect_ratio: Video aspect ratio (9:16, 1:1, 16:9). Defaults to 9:16.
@@ -86,14 +86,43 @@ class FIBOStructuredPromptV2(BaseModel):
             
         Requirements: 3.1, 3.2, 3.3
         """
+        # Build a detailed prompt from structured parameters
+        prompt_parts = [self.scene_description]
+        
+        # Add camera details
+        camera_angle = self.camera.get("angle", "medium_shot").replace("_", " ")
+        shot_type = self.camera.get("shot_type", "")
+        prompt_parts.append(f"Camera: {camera_angle} {shot_type}".strip())
+        
+        # Add lighting details
+        lighting_type = self.lighting.get("type", "natural").replace("_", " ")
+        lighting_direction = self.lighting.get("direction", "")
+        lighting_intensity = self.lighting.get("intensity", "medium")
+        prompt_parts.append(f"Lighting: {lighting_type}, {lighting_direction}, {lighting_intensity} intensity")
+        
+        # Add composition details
+        subject_pos = self.composition.get("subject_position", "center").replace("_", " ")
+        background = self.composition.get("background", "")
+        dof = self.composition.get("depth_of_field", "")
+        prompt_parts.append(f"Composition: subject {subject_pos}, {background} background, {dof} depth of field")
+        
+        # Add style details
+        mood = self.style.get("mood", "")
+        aesthetic = self.style.get("aesthetic", "")
+        material = self.style.get("material", "")
+        if mood or aesthetic or material:
+            style_parts = [s for s in [mood, aesthetic, material] if s]
+            prompt_parts.append(f"Style: {', '.join(style_parts)}")
+        
+        # Add color palette if present
+        color_palette = self.style.get("color_palette", [])
+        if color_palette:
+            prompt_parts.append(f"Color palette: {', '.join(color_palette)}")
+        
+        enhanced_prompt = ". ".join(prompt_parts)
+        
         return {
-            "structured_prompt": {
-                "scene_description": self.scene_description,
-                "camera": self.camera,
-                "lighting": self.lighting,
-                "composition": self.composition,
-                "style": self.style
-            },
+            "prompt": enhanced_prompt,
             "num_results": 1,
             "aspect_ratio": aspect_ratio,
             "sync": True

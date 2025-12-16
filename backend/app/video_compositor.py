@@ -19,7 +19,8 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.frame_generator import GeneratedFrame, get_dimensions_for_aspect_ratio
-from app.models import Storyboard, Scene
+from app.models import Storyboard, Scene, EnhancedStoryboard, SceneParameters
+from typing import Union
 
 
 class CompositeResult(BaseModel):
@@ -52,7 +53,7 @@ def get_xfade_transition(transition_type: str) -> str:
     """Map storyboard transition type to FFmpeg xfade transition name.
     
     Args:
-        transition_type: Transition type from storyboard ('fade', 'dissolve', 'cut', 'slide').
+        transition_type: Transition type from storyboard ('fade', 'dissolve', 'cut', 'slide', 'cross-dissolve').
         
     Returns:
         FFmpeg xfade transition name.
@@ -60,6 +61,7 @@ def get_xfade_transition(transition_type: str) -> str:
     transition_map = {
         "fade": "fade",
         "dissolve": "dissolve",
+        "cross-dissolve": "dissolve",  # v2 storyboard uses cross-dissolve
         "cut": "fade",  # Use very short fade for cut effect
         "slide": "slideleft",
     }
@@ -82,7 +84,7 @@ def get_transition_duration(transition_type: str) -> float:
 
 def build_ffmpeg_command(
     frames: list[GeneratedFrame],
-    storyboard: Storyboard,
+    storyboard: Union[Storyboard, EnhancedStoryboard],
     output_path: Path,
     enable_transitions: bool = True
 ) -> list[str]:
@@ -194,7 +196,7 @@ def build_ffmpeg_command(
 
 async def composite_video(
     frames: list[GeneratedFrame],
-    storyboard: Storyboard,
+    storyboard: Union[Storyboard, EnhancedStoryboard],
     output_dir: Path,
     job_id: str
 ) -> CompositeResult:
@@ -341,7 +343,7 @@ class VideoCompositorService:
     async def composite(
         self,
         frames: list[GeneratedFrame],
-        storyboard: Storyboard,
+        storyboard: Union[Storyboard, EnhancedStoryboard],
         job_id: str
     ) -> CompositeResult:
         """Composite frames into a video with transitions.

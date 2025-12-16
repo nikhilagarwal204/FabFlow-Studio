@@ -554,38 +554,9 @@ async def run_video_generation_pipeline_v2(job_id: str, user_input: EnhancedUser
             message="Compositing video..."
         )
         
-        # Create a compatible Storyboard for the compositor
-        # The compositor expects the v1 Storyboard format
-        from app.models import Scene, FIBOPrompt
-        
-        v1_scenes = []
-        for scene in storyboard.scenes:
-            v1_scene = Scene(
-                scene_number=scene.scene_number,
-                duration=scene.duration,
-                transition="dissolve" if scene.transition == "cross-dissolve" else scene.transition,
-                fibo_prompt=FIBOPrompt(
-                    prompt=scene.scene_description,
-                    camera_angle=scene.camera.angle if scene.camera.angle != "three-quarter" else "medium-shot",
-                    lighting_style=scene.lighting.style.replace("-", " ").split()[0],  # soft-studio -> soft
-                    subject_position=scene.composition.subject_position,
-                    color_palette=scene.style.color_palette,
-                    mood=scene.style.mood
-                )
-            )
-            v1_scenes.append(v1_scene)
-        
-        v1_storyboard = Storyboard(
-            brand_name=storyboard.brand_name,
-            product_name=storyboard.product_name,
-            total_duration=storyboard.total_duration,
-            aspect_ratio=storyboard.aspect_ratio,
-            scenes=v1_scenes
-        )
-        
         composite_result = await get_video_compositor_service().composite(
             frames=frame_result.frames,
-            storyboard=v1_storyboard,
+            storyboard=storyboard,
             job_id=job_id
         )
         
