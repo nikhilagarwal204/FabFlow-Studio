@@ -7,6 +7,7 @@
 - Tailwind CSS v4
 - Radix UI primitives (via shadcn/ui pattern)
 - Axios for API calls
+- Lucide React for icons
 
 ## Backend
 
@@ -15,6 +16,7 @@
 - OpenAI SDK (GPT-4o with structured JSON output)
 - HTTPX for async HTTP (FIBO API)
 - FFmpeg for video compositing
+- aiofiles for async file operations
 
 ## External Services
 

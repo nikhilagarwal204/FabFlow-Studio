@@ -16,3 +16,5 @@ AI-powered ad video creation platform for Instagram. Users provide brand/product
 - Support for 9:16 (Stories/Reels), 1:1 (Feed), 16:9 (YouTube) aspect ratios
 - Background job processing with real-time progress polling
 - Video output optimized for Instagram (H.264, MP4)
+- V2 pipeline with enhanced FIBO JSON control (material, colors, style mood)
+- Parameter modification for quick iteration on generated content
