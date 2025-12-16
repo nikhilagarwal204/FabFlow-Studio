@@ -73,8 +73,8 @@ This plan enhances FabFlow Studio to leverage FIBO's JSON-native architecture fo
     - **Property 10: Frames Are Ordered by Scene Number**
     - **Validates: Requirements 5.4**
 
-- [ ] 7. API Endpoints
-  - [ ] 7.1 Create v2 API endpoints
+- [x] 7. API Endpoints
+  - [x] 7.1 Create v2 API endpoints
     - POST /api/v2/generate-storyboard - enhanced storyboard generation
     - POST /api/v2/generate-video - full pipeline with structured FIBO
     - POST /api/v2/modify-parameter/{job_id} - parameter modification
@@ -84,7 +84,7 @@ This plan enhances FabFlow Studio to leverage FIBO's JSON-native architecture fo
     - **Property 1: Input Parameters Flow to Structured Prompt**
     - **Validates: Requirements 1.2, 1.3, 1.5**
 
-- [ ] 8. Checkpoint - Ensure all tests pass
+- [x] 8. Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 9. Frontend Parameter Editor
