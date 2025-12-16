@@ -306,7 +306,7 @@ class FIBOClient:
             FIBOTimeoutError: If polling exceeds MAX_POLL_TIME.
             FIBOError: For other errors.
         """
-        endpoint = f"{self.BASE_URL}/v1/text-to-image/base/4.0"
+        endpoint = f"{self.BASE_URL}/v1/text-to-image/base/2.3"
         
         # Build the prompt string from structured data for text-to-image endpoint
         # The structured prompt provides deterministic control via detailed description
@@ -410,7 +410,7 @@ class FIBOClient:
             
         Requirements: 5.1
         """
-        endpoint = f"{self.BASE_URL}/v1/text-to-image/base/4.0"
+        endpoint = f"{self.BASE_URL}/v1/text-to-image/base/2.3"
         
         # Use the structured prompt's to_api_payload method for proper formatting
         payload = structured_prompt.to_api_payload(aspect_ratio)
@@ -491,7 +491,7 @@ class FIBOClient:
             FIBOTimeoutError: If polling exceeds MAX_POLL_TIME.
             FIBOError: For other errors.
         """
-        endpoint = f"{self.BASE_URL}/v1/text-to-image/base/4.0"
+        endpoint = f"{self.BASE_URL}/v1/text-to-image/base/2.3"
         
         payload = {
             "prompt": prompt,

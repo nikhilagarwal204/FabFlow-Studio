@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import { VideoInputForm } from "@/components/VideoInputForm";
 import { ProgressTracker } from "@/components/ProgressTracker";
-import { VideoPlayer } from "@/components/VideoPlayer";
+import { VideoCompletionView } from "@/components/VideoCompletionView";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
 import api, { generateVideoV2, type EnhancedUserInputPayload } from "@/lib/api";
 import type { UserInput } from "@/lib/validation";
@@ -103,7 +103,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4 dark:bg-black">
-      <main className="flex w-full max-w-lg flex-col items-center gap-8">
+      <main className={`flex w-full flex-col items-center gap-8 ${appState === "complete" ? "max-w-4xl" : "max-w-lg"}`}>
         <div className="text-center">
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             FabFlow Studio
@@ -128,9 +128,14 @@ export default function Home() {
           />
         )}
 
-        {/* Complete State - Show Video Player */}
-        {appState === "complete" && videoUrl && (
-          <VideoPlayer videoUrl={videoUrl} onReset={handleReset} />
+        {/* Complete State - Show Video with Parameter Editor */}
+        {appState === "complete" && videoUrl && jobId && (
+          <VideoCompletionView
+            videoUrl={videoUrl}
+            jobId={jobId}
+            isV2Pipeline={isV2Pipeline}
+            onReset={handleReset}
+          />
         )}
 
         {/* Error State */}
