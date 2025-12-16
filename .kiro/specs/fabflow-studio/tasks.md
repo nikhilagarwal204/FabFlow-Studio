@@ -2,7 +2,7 @@
 
 ## FabFlow Studio - Hackathon Prototype
 
-Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
+Architecture: Next.js frontend (Vercel) + FastAPI backend (Render)
 
 - [x] 1. Project Setup and Configuration
   - [x] 1.1 Initialize FastAPI backend project
@@ -25,7 +25,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Add aspect ratio selector (9:16, 1:1, 16:9)
     - Implement client-side validation
     - _Requirements: 1.1, 1.3, 1.5, 1.6, 1.7_
-  - [ ]* 2.2 Add image upload support
+  - [x] 2.2 Add image upload support
     - Add image upload with drag-and-drop support
     - Validate image MIME types (jpeg, png, webp)
     - _Requirements: 1.2_
@@ -50,7 +50,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Return Storyboard JSON
     - Handle OpenAI errors gracefully
     - _Requirements: 1.4, 2.1_
-  - [ ]* 3.4 Create storyboard preview component (Frontend)
+  - [ ] 3.4 Create storyboard preview component (Frontend)
     - Display generated scenes with descriptions
     - Show camera angle, lighting, duration for each scene
     - _Requirements: 2.4_
@@ -61,15 +61,15 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Implement poll_status method for async responses
     - Handle API errors and timeouts
     - _Requirements: 3.1, 3.2, 3.3, 7.1, 7.2, 7.3_
-  - [ ]* 4.2 Add structured-prompt-generate support
+  - [ ] 4.2 Add structured-prompt-generate support
     - Implement structured-prompt-generate endpoint call
     - Map storyboard scene data to structured prompt format
     - _Requirements: 3.1, 3.2_
-  - [ ]* 4.3 Add translation endpoint support
+  - [ ] 4.3 Add translation endpoint support
     - Implement generate_with_reference method
     - Handle reference image URL in requests
     - _Requirements: 1.2, 3.1_
-  - [ ]* 4.4 Implement retry logic
+  - [ ] 4.4 Implement retry logic
     - Retry failed FIBO requests up to 3 times
     - Exponential backoff between retries
     - _Requirements: 4.3_
@@ -88,7 +88,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Create video from frames with scene durations
     - Output MP4 file
     - _Requirements: 5.1, 5.3, 5.5, 5.6_
-  - [ ]* 6.2 Add transition effects
+  - [ ] 6.2 Add transition effects
     - Apply fade transitions between scenes using FFmpeg filters
     - _Requirements: 5.2_
   - [x] 6.3 Create /api/generate-video endpoint
@@ -118,7 +118,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Display final video with playback controls
     - Provide download button
     - _Requirements: 5.4, 6.4_
-  - [ ]* 8.3 Implement error handling UI
+  - [ ] 8.3 Implement error handling UI
     - Display user-friendly error messages
     - Provide retry options
     - _Requirements: 6.3_
@@ -129,7 +129,7 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Poll job status and update progress UI
     - Display video when complete
     - _Requirements: 1.4, 6.4_
-  - [ ]* 9.2 Deploy backend to Railway/Render
+  - [ ]* 9.2 Deploy backend to Render
     - Create Dockerfile with FFmpeg
     - Configure environment variables
     - Test full pipeline

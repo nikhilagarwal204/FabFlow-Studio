@@ -23,6 +23,7 @@ export interface ValidationResult {
 const VALID_ASPECT_RATIOS: AspectRatio[] = ['9:16', '1:1', '16:9'];
 const MIN_DURATION = 5;
 const MAX_DURATION = 12;
+const VALID_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /**
  * Validates user input for ad video creation
@@ -61,10 +62,26 @@ export function validateUserInput(input: Partial<UserInput>): ValidationResult {
     errors.push(`Aspect ratio must be one of: ${VALID_ASPECT_RATIOS.join(', ')}`);
   }
 
+  // Validate product image (optional, but must be valid MIME type if provided)
+  if (input.productImage) {
+    if (!VALID_IMAGE_MIME_TYPES.includes(input.productImage.type)) {
+      errors.push('Product image must be a JPEG, PNG, or WebP file');
+    }
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
   };
+}
+
+/**
+ * Validates image file MIME type
+ * @param file - File to validate
+ * @returns true if file is a valid image type (jpeg, png, webp)
+ */
+export function isValidImageType(file: File): boolean {
+  return VALID_IMAGE_MIME_TYPES.includes(file.type);
 }
 
 /**

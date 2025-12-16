@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -16,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import {
   validateUserInput,
+  isValidImageType,
   DEFAULT_USER_INPUT,
   type UserInput,
   type AspectRatio,
@@ -33,7 +35,10 @@ export function VideoInputForm({ onSubmit, isLoading = false }: VideoInputFormPr
   const [productDescription, setProductDescription] = React.useState("");
   const [duration, setDuration] = React.useState(DEFAULT_USER_INPUT.duration);
   const [aspectRatio, setAspectRatio] = React.useState<AspectRatio>(DEFAULT_USER_INPUT.aspectRatio);
+  const [productImage, setProductImage] = React.useState<File | null>(null);
   const [errors, setErrors] = React.useState<string[]>([]);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +49,7 @@ export function VideoInputForm({ onSubmit, isLoading = false }: VideoInputFormPr
       productDescription,
       duration,
       aspectRatio,
-      productImage: null,
+      productImage,
     };
 
     const validation: ValidationResult = validateUserInput(input);
@@ -58,6 +63,49 @@ export function VideoInputForm({ onSubmit, isLoading = false }: VideoInputFormPr
     onSubmit(input);
   };
 
+  const handleFileSelect = (file: File) => {
+    if (isValidImageType(file)) {
+      setProductImage(file);
+      // Clear any previous image-related errors
+      setErrors((prev) => prev.filter((e) => !e.includes("image")));
+    } else {
+      setErrors(["Product image must be a JPEG, PNG, or WebP file"]);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+    
+    const file = e.dataTransfer.files[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileSelect(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setProductImage(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
 
   return (
     <Card className="w-full max-w-lg">
@@ -115,6 +163,91 @@ export function VideoInputForm({ onSubmit, isLoading = false }: VideoInputFormPr
               disabled={isLoading}
               rows={4}
             />
+          </div>
+
+          {/* Product Image Upload */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="productImage">Product Image (Optional)</Label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              id="productImage"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleFileInputChange}
+              disabled={isLoading}
+              className="hidden"
+            />
+            {productImage ? (
+              <div className="relative rounded-md border border-border p-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-md bg-muted relative">
+                    <Image
+                      src={URL.createObjectURL(productImage)}
+                      alt="Product preview"
+                      fill
+                      className="object-cover"
+                      unoptimized
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{productImage.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {(productImage.size / 1024).toFixed(1)} KB
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRemoveImage}
+                    disabled={isLoading}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onClick={() => fileInputRef.current?.click()}
+                className={`
+                  flex flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed p-6 cursor-pointer transition-colors
+                  ${isDragging 
+                    ? "border-primary bg-primary/5" 
+                    : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                  }
+                  ${isLoading ? "pointer-events-none opacity-50" : ""}
+                `}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="text-muted-foreground"
+                >
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" x2="12" y1="3" y2="15" />
+                </svg>
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground">
+                    <span className="font-medium text-foreground">Click to upload</span> or drag and drop
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    JPEG, PNG, or WebP
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Duration Slider */}
