@@ -31,8 +31,8 @@ This plan enhances FabFlow Studio to leverage FIBO's JSON-native architecture fo
     - **Property 7: Structured Prompt Round-Trip**
     - **Validates: Requirements 3.4**
 
-- [ ] 3. Enhanced LLM Planner
-  - [ ] 3.1 Update storyboard generator for structured FIBO output
+- [-] 3. Enhanced LLM Planner
+  - [x] 3.1 Update storyboard generator for structured FIBO output
     - Create enhanced system prompt for FIBO JSON parameters
     - Update JSON schema for SceneParameters structure
     - Implement generate_enhanced_storyboard() function
