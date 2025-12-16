@@ -57,7 +57,7 @@ class FIBOClient:
         MAX_POLL_TIME: Maximum seconds to wait for completion.
     """
     
-    BASE_URL = "https://engine.prod.bria-api.com/v1"
+    BASE_URL = "https://engine.prod.bria-api.com"
     POLL_INTERVAL = 2  # seconds between polls (per Requirement 7.2)
     MAX_POLL_TIME = 60  # maximum polling time in seconds
     
@@ -103,17 +103,16 @@ class FIBOClient:
             FIBOTimeoutError: If polling exceeds MAX_POLL_TIME.
             FIBOError: For other errors.
         """
-        endpoint = f"{self.BASE_URL}/text-to-image/hd"
+        endpoint = f"{self.BASE_URL}/v1/text-to-image/base/2.3"
         
         payload = {
             "prompt": prompt,
             "num_results": num_results,
             "aspect_ratio": aspect_ratio,
-            "sync": False,
-            "model_version": "2.3"
+            "sync": True  # Use sync mode for simpler response handling
         }
         
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=120.0) as client:
             try:
                 response = await client.post(
                     endpoint,
@@ -134,20 +133,31 @@ class FIBOClient:
                     )
                 
                 data = response.json()
-                request_id = data.get("request_id")
+                
+                # Handle sync response - result is returned directly
+                result = data.get("result")
+                if result and len(result) > 0:
+                    # API returns 'urls' array, not 'url'
+                    urls = result[0].get("urls")
+                    if urls and len(urls) > 0:
+                        return FIBOGenerationResult(
+                            request_id=result[0].get("uuid", "sync-request"),
+                            image_url=urls[0]
+                        )
+                
+                # Fallback to async polling if sync didn't return result directly
+                request_id = data.get("sid")
                 status_url = data.get("status_url")
                 
-                if not request_id or not status_url:
-                    raise FIBOAPIError(
-                        "Invalid response from FIBO API: missing request_id or status_url"
+                if status_url:
+                    image_url = await self.poll_status(request_id or "unknown", status_url, client)
+                    return FIBOGenerationResult(
+                        request_id=request_id or "unknown",
+                        image_url=image_url
                     )
                 
-                # Poll for result
-                image_url = await self.poll_status(request_id, status_url, client)
-                
-                return FIBOGenerationResult(
-                    request_id=request_id,
-                    image_url=image_url
+                raise FIBOAPIError(
+                    f"Invalid response from FIBO API: {data}"
                 )
                 
             except httpx.TimeoutException:
@@ -207,9 +217,10 @@ class FIBOClient:
                     if status == "completed":
                         result = data.get("result", [])
                         if result and len(result) > 0:
-                            image_url = result[0].get("url")
-                            if image_url:
-                                return image_url
+                            # API returns 'urls' array, not 'url'
+                            urls = result[0].get("urls")
+                            if urls and len(urls) > 0:
+                                return urls[0]
                         raise FIBOAPIError(
                             "Completed but no image URL in response"
                         )

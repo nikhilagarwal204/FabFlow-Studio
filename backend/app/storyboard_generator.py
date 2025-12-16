@@ -89,7 +89,7 @@ STORYBOARD_JSON_SCHEMA = {
                             },
                             "mood": {"type": "string"}
                         },
-                        "required": ["prompt", "camera_angle", "lighting_style", "subject_position"],
+                        "required": ["prompt", "camera_angle", "lighting_style", "subject_position", "color_palette", "mood"],
                         "additionalProperties": False
                     }
                 },
