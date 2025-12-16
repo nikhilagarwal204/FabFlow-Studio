@@ -28,7 +28,20 @@ export default function Home() {
 
     try {
       // Map frontend UserInput to backend expected format
-      const payload = {
+      // Use v2 endpoint if enhanced fields are provided, otherwise use v1
+      const hasEnhancedFields = input.material || input.primaryColor || input.secondaryColor || input.styleMood;
+      
+      const payload = hasEnhancedFields ? {
+        brand_name: input.brandName,
+        product_name: input.productName,
+        product_description: input.productDescription,
+        duration: input.duration,
+        aspect_ratio: input.aspectRatio,
+        material: input.material || null,
+        primary_color: input.primaryColor || null,
+        secondary_color: input.secondaryColor || null,
+        style_mood: input.styleMood || null,
+      } : {
         brand_name: input.brandName,
         product_name: input.productName,
         product_description: input.productDescription,
@@ -37,8 +50,9 @@ export default function Home() {
         product_image_url: null, // Image upload not implemented yet
       };
 
+      const endpoint = hasEnhancedFields ? "/api/v2/generate-video" : "/api/generate-video";
       const response = await api.post<GenerateVideoResponse>(
-        "/api/generate-video",
+        endpoint,
         payload
       );
 

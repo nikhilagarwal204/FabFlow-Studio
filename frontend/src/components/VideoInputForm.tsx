@@ -19,8 +19,12 @@ import {
   validateUserInput,
   isValidImageType,
   DEFAULT_USER_INPUT,
+  VALID_MATERIALS,
+  VALID_STYLE_MOODS,
   type UserInput,
   type AspectRatio,
+  type MaterialType,
+  type StyleMood,
   type ValidationResult,
 } from "@/lib/validation";
 
@@ -36,6 +40,11 @@ export function VideoInputForm({ onSubmit, isLoading = false }: VideoInputFormPr
   const [duration, setDuration] = React.useState(DEFAULT_USER_INPUT.duration);
   const [aspectRatio, setAspectRatio] = React.useState<AspectRatio>(DEFAULT_USER_INPUT.aspectRatio);
   const [productImage, setProductImage] = React.useState<File | null>(null);
+  // Enhanced FIBO JSON control fields
+  const [material, setMaterial] = React.useState<MaterialType | "">(DEFAULT_USER_INPUT.material || "");
+  const [primaryColor, setPrimaryColor] = React.useState(DEFAULT_USER_INPUT.primaryColor || "");
+  const [secondaryColor, setSecondaryColor] = React.useState(DEFAULT_USER_INPUT.secondaryColor || "");
+  const [styleMood, setStyleMood] = React.useState<StyleMood | "">(DEFAULT_USER_INPUT.styleMood || "");
   const [errors, setErrors] = React.useState<string[]>([]);
   const [isDragging, setIsDragging] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -50,6 +59,11 @@ export function VideoInputForm({ onSubmit, isLoading = false }: VideoInputFormPr
       duration,
       aspectRatio,
       productImage,
+      // Enhanced fields - only include if set
+      material: material || null,
+      primaryColor: primaryColor || null,
+      secondaryColor: secondaryColor || null,
+      styleMood: styleMood || null,
     };
 
     const validation: ValidationResult = validateUserInput(input);
@@ -163,6 +177,101 @@ export function VideoInputForm({ onSubmit, isLoading = false }: VideoInputFormPr
               disabled={isLoading}
               rows={4}
             />
+          </div>
+
+          {/* Material Type Selector */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="material">Material Type (Optional)</Label>
+            <Select
+              value={material}
+              onValueChange={(value: MaterialType) => setMaterial(value)}
+              disabled={isLoading}
+            >
+              <SelectTrigger id="material" className="w-full">
+                <SelectValue placeholder="Select material type" />
+              </SelectTrigger>
+              <SelectContent>
+                {VALID_MATERIALS.map((mat) => (
+                  <SelectItem key={mat} value={mat}>
+                    {mat.charAt(0).toUpperCase() + mat.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Style Mood Selector */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="styleMood">Style Mood (Optional)</Label>
+            <Select
+              value={styleMood}
+              onValueChange={(value: StyleMood) => setStyleMood(value)}
+              disabled={isLoading}
+            >
+              <SelectTrigger id="styleMood" className="w-full">
+                <SelectValue placeholder="Select style mood" />
+              </SelectTrigger>
+              <SelectContent>
+                {VALID_STYLE_MOODS.map((mood) => (
+                  <SelectItem key={mood} value={mood}>
+                    {mood.charAt(0).toUpperCase() + mood.slice(1)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Color Preferences */}
+          <div className="flex flex-col gap-3">
+            <Label>Color Preferences (Optional)</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="primaryColor" className="text-xs text-muted-foreground">
+                  Primary Color
+                </Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    id="primaryColorPicker"
+                    value={primaryColor || "#000000"}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    disabled={isLoading}
+                    className="h-9 w-10 cursor-pointer rounded border border-input p-0.5"
+                  />
+                  <Input
+                    id="primaryColor"
+                    value={primaryColor}
+                    onChange={(e) => setPrimaryColor(e.target.value)}
+                    placeholder="#000000"
+                    disabled={isLoading}
+                    className="flex-1 font-mono text-sm"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="secondaryColor" className="text-xs text-muted-foreground">
+                  Secondary Color
+                </Label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    id="secondaryColorPicker"
+                    value={secondaryColor || "#ffffff"}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    disabled={isLoading}
+                    className="h-9 w-10 cursor-pointer rounded border border-input p-0.5"
+                  />
+                  <Input
+                    id="secondaryColor"
+                    value={secondaryColor}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    placeholder="#ffffff"
+                    disabled={isLoading}
+                    className="flex-1 font-mono text-sm"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Product Image Upload */}

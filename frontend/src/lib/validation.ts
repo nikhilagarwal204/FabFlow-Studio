@@ -1,10 +1,14 @@
 /**
  * User Input Validation Utility
  * Validates user input for FabFlow Studio ad video creation
- * Requirements: 1.1, 1.3, 1.5
+ * Requirements: 1.1, 1.2, 1.3, 1.5
  */
 
 export type AspectRatio = '9:16' | '1:1' | '16:9';
+
+// Enhanced FIBO JSON control types
+export type MaterialType = 'fabric' | 'leather' | 'metal' | 'wood' | 'glass' | 'plastic' | 'ceramic';
+export type StyleMood = 'luxury' | 'minimal' | 'vibrant' | 'natural' | 'tech';
 
 export interface UserInput {
   brandName: string;
@@ -13,6 +17,11 @@ export interface UserInput {
   productImage?: File | null;
   duration: number;
   aspectRatio: AspectRatio;
+  // Enhanced fields for FIBO JSON control
+  material?: MaterialType | null;
+  primaryColor?: string | null;
+  secondaryColor?: string | null;
+  styleMood?: StyleMood | null;
 }
 
 export interface ValidationResult {
@@ -21,9 +30,12 @@ export interface ValidationResult {
 }
 
 const VALID_ASPECT_RATIOS: AspectRatio[] = ['9:16', '1:1', '16:9'];
+const VALID_MATERIALS: MaterialType[] = ['fabric', 'leather', 'metal', 'wood', 'glass', 'plastic', 'ceramic'];
+const VALID_STYLE_MOODS: StyleMood[] = ['luxury', 'minimal', 'vibrant', 'natural', 'tech'];
 const MIN_DURATION = 5;
 const MAX_DURATION = 12;
 const VALID_IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const HEX_COLOR_REGEX = /^#[0-9A-Fa-f]{6}$/;
 
 /**
  * Validates user input for ad video creation
@@ -69,6 +81,26 @@ export function validateUserInput(input: Partial<UserInput>): ValidationResult {
     }
   }
 
+  // Validate material (optional, but must be valid if provided)
+  if (input.material && !VALID_MATERIALS.includes(input.material)) {
+    errors.push(`Material must be one of: ${VALID_MATERIALS.join(', ')}`);
+  }
+
+  // Validate style mood (optional, but must be valid if provided)
+  if (input.styleMood && !VALID_STYLE_MOODS.includes(input.styleMood)) {
+    errors.push(`Style mood must be one of: ${VALID_STYLE_MOODS.join(', ')}`);
+  }
+
+  // Validate primary color (optional, but must be valid hex if provided)
+  if (input.primaryColor && !HEX_COLOR_REGEX.test(input.primaryColor)) {
+    errors.push('Primary color must be a valid hex color (e.g., #FF5733)');
+  }
+
+  // Validate secondary color (optional, but must be valid hex if provided)
+  if (input.secondaryColor && !HEX_COLOR_REGEX.test(input.secondaryColor)) {
+    errors.push('Secondary color must be a valid hex color (e.g., #FF5733)');
+  }
+
   return {
     isValid: errors.length === 0,
     errors,
@@ -92,4 +124,20 @@ export const DEFAULT_USER_INPUT: Omit<UserInput, 'brandName' | 'productName' | '
   duration: 8,
   aspectRatio: '9:16',
   productImage: null,
+  material: null,
+  primaryColor: null,
+  secondaryColor: null,
+  styleMood: null,
 };
+
+/**
+ * Validates hex color format
+ * @param color - Color string to validate
+ * @returns true if valid hex color format (#RRGGBB)
+ */
+export function isValidHexColor(color: string): boolean {
+  return HEX_COLOR_REGEX.test(color);
+}
+
+// Export constants for use in components
+export { VALID_MATERIALS, VALID_STYLE_MOODS };
