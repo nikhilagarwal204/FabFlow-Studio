@@ -97,15 +97,15 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Serve final video file
     - _Requirements: 5.1, 5.4_
 
-- [ ] 7. Job Status and Progress (Backend)
-  - [ ] 7.1 Create job tracking system
+- [x] 7. Job Status and Progress (Backend)
+  - [x] 7.1 Create job tracking system
     - Store job status in memory (dict for prototype)
     - Track stages: storyboard, frame-generation, compositing, complete
     - _Requirements: 6.1, 6.2_
-  - [ ] 7.2 Create /api/job/{id}/status endpoint
+  - [x] 7.2 Create /api/job/{id}/status endpoint
     - Return current stage and progress percentage
     - _Requirements: 6.1, 6.2_
-  - [ ] 7.3 Create /api/job/{id}/result endpoint
+  - [x] 7.3 Create /api/job/{id}/result endpoint
     - Return video URL when job is complete
     - _Requirements: 5.4, 6.4_
 
