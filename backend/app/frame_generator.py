@@ -112,12 +112,16 @@ async def generate_frames_for_scene(
     aspect_ratio: str,
     fibo_client: FIBOClient,
     output_dir: Path,
-    reference_image_url: Optional[str] = None
+    reference_image_url: Optional[str] = None,
+    use_structured_prompt: bool = True
 ) -> FrameGenerationResult:
     """Generate frames for a single scene using FIBO API.
     
     For MVP: Generates 1 key frame per scene. FIBO generates the key frame,
     and FFmpeg will handle frame duplication during compositing.
+    
+    When a reference_image_url is provided, uses the FIBO translation endpoint
+    to maintain visual consistency with the user's uploaded product image.
     
     Args:
         scene: The scene to generate frames for.
@@ -125,18 +129,22 @@ async def generate_frames_for_scene(
         fibo_client: FIBO API client instance.
         output_dir: Directory to store generated frames.
         reference_image_url: Optional reference image for translation API.
+            When provided, uses generate_with_reference for visual consistency.
+        use_structured_prompt: If True, uses structured prompt format for
+            deterministic control over camera, lighting, composition.
         
     Returns:
         FrameGenerationResult with generated frames or errors.
         
-    Requirements: 4.1, 4.4
+    Requirements: 1.2, 3.1, 3.2, 4.1, 4.4
     """
     frames: list[GeneratedFrame] = []
     errors: list[str] = []
     
     try:
-        # Build the prompt from scene's FIBO prompt
         fibo_prompt = scene.fibo_prompt
+        
+        # Build the scene prompt for guidance
         full_prompt = (
             f"{fibo_prompt.prompt}. "
             f"Camera angle: {fibo_prompt.camera_angle}. "
@@ -151,12 +159,30 @@ async def generate_frames_for_scene(
             colors = ", ".join(fibo_prompt.color_palette)
             full_prompt += f" Color palette: {colors}."
         
-        # Generate key frame using FIBO
-        result = await fibo_client.generate_image(
-            prompt=full_prompt,
-            aspect_ratio=aspect_ratio,
-            num_results=1
-        )
+        if reference_image_url:
+            # Use translation endpoint with reference image (Requirements 1.2, 3.1)
+            # This maintains visual consistency with the user's uploaded product image
+            result = await fibo_client.generate_with_reference(
+                image_url=reference_image_url,
+                prompt=full_prompt,
+                aspect_ratio=aspect_ratio,
+                num_results=1
+            )
+        elif use_structured_prompt:
+            # Use structured prompt for deterministic control (Requirements 3.1, 3.2)
+            # Maps storyboard scene data to FIBO structured prompt format
+            result = await fibo_client.generate_from_scene(
+                fibo_prompt=fibo_prompt,
+                aspect_ratio=aspect_ratio,
+                num_results=1
+            )
+        else:
+            # Fallback to simple text prompt
+            result = await fibo_client.generate_image(
+                prompt=full_prompt,
+                aspect_ratio=aspect_ratio,
+                num_results=1
+            )
         
         # Create local path for the frame
         frame_filename = f"scene_{scene.scene_number:02d}_frame_00.png"

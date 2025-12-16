@@ -61,15 +61,15 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Render)
     - Implement poll_status method for async responses
     - Handle API errors and timeouts
     - _Requirements: 3.1, 3.2, 3.3, 7.1, 7.2, 7.3_
-  - [ ] 4.2 Add structured-prompt-generate support
+  - [x] 4.2 Add structured-prompt-generate support
     - Implement structured-prompt-generate endpoint call
     - Map storyboard scene data to structured prompt format
     - _Requirements: 3.1, 3.2_
-  - [ ] 4.3 Add translation endpoint support
+  - [x] 4.3 Add translation endpoint support
     - Implement generate_with_reference method
     - Handle reference image URL in requests
     - _Requirements: 1.2, 3.1_
-  - [ ] 4.4 Implement retry logic
+  - [x] 4.4 Implement retry logic
     - Retry failed FIBO requests up to 3 times
     - Exponential backoff between retries
     - _Requirements: 4.3_
