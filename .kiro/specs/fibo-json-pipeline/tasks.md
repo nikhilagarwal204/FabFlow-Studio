@@ -4,8 +4,8 @@
 
 This plan enhances FabFlow Studio to leverage FIBO's JSON-native architecture for professional product ad generation.
 
-- [ ] 1. Enhanced Data Models
-  - [ ] 1.1 Create enhanced Pydantic models for FIBO JSON control
+- [x] 1. Enhanced Data Models
+  - [x] 1.1 Create enhanced Pydantic models for FIBO JSON control
     - Add CameraParams, LightingParams, CompositionParams, StyleParams models
     - Create SceneParameters model combining all parameter types
     - Add EnhancedUserInput with material and color fields
