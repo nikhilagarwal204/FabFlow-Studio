@@ -2,28 +2,15 @@
 
 import * as React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import api from "@/lib/api";
+import api, { getJobStatus, getJobResult, type JobStatus } from "@/lib/api";
 
-type PipelineStage =
-  | "queued"
-  | "storyboard"
-  | "frame-generation"
-  | "compositing"
-  | "complete"
-  | "error";
-
-interface JobStatus {
-  job_id: string;
-  stage: PipelineStage;
-  progress: number;
-  message: string;
-  error?: string;
-}
+type PipelineStage = JobStatus["stage"];
 
 interface ProgressTrackerProps {
   jobId: string;
   onComplete: (videoUrl: string) => void;
   onError: (error: string) => void;
+  isV2Pipeline?: boolean;
 }
 
 const STAGE_LABELS: Record<PipelineStage, string> = {
@@ -35,6 +22,25 @@ const STAGE_LABELS: Record<PipelineStage, string> = {
   error: "Error",
 };
 
+// V2 pipeline has more descriptive labels
+const STAGE_LABELS_V2: Record<PipelineStage, string> = {
+  queued: "Queued",
+  storyboard: "Planning Scenes with AI",
+  "frame-generation": "Generating Product Shots",
+  compositing: "Assembling Video",
+  complete: "Complete",
+  error: "Error",
+};
+
+const STAGE_DESCRIPTIONS: Record<PipelineStage, string> = {
+  queued: "Your job is in the queue",
+  storyboard: "Creating structured scene parameters with camera, lighting, and composition settings",
+  "frame-generation": "Generating high-quality product frames using FIBO structured prompts",
+  compositing: "Assembling frames into final video with smooth transitions",
+  complete: "Your video is ready!",
+  error: "Something went wrong",
+};
+
 const STAGE_ORDER: PipelineStage[] = [
   "queued",
   "storyboard",
@@ -43,29 +49,30 @@ const STAGE_ORDER: PipelineStage[] = [
   "complete",
 ];
 
-export function ProgressTracker({ jobId, onComplete, onError }: ProgressTrackerProps) {
+export function ProgressTracker({ jobId, onComplete, onError, isV2Pipeline = false }: ProgressTrackerProps) {
   const [status, setStatus] = React.useState<JobStatus | null>(null);
   const [polling, setPolling] = React.useState(true);
+
+  const stageLabels = isV2Pipeline ? STAGE_LABELS_V2 : STAGE_LABELS;
 
   React.useEffect(() => {
     if (!jobId || !polling) return;
 
     const pollStatus = async () => {
       try {
-        const response = await api.get<JobStatus>(`/api/job/${jobId}/status`);
-        const jobStatus = response.data;
+        const jobStatus = await getJobStatus(jobId);
         setStatus(jobStatus);
 
         if (jobStatus.stage === "complete") {
           setPolling(false);
           // Fetch the result to get the video URL
-          const resultResponse = await api.get(`/api/job/${jobId}/result`);
-          if (resultResponse.data.success && resultResponse.data.video_url) {
+          const result = await getJobResult(jobId);
+          if (result.success && result.video_url) {
             // Construct full URL using the API base URL
             const baseUrl = api.defaults.baseURL || "";
-            const videoUrl = resultResponse.data.video_url.startsWith("http")
-              ? resultResponse.data.video_url
-              : `${baseUrl}${resultResponse.data.video_url}`;
+            const videoUrl = result.video_url.startsWith("http")
+              ? result.video_url
+              : `${baseUrl}${result.video_url}`;
             onComplete(videoUrl);
           }
         } else if (jobStatus.stage === "error") {
@@ -106,14 +113,16 @@ export function ProgressTracker({ jobId, onComplete, onError }: ProgressTrackerP
   return (
     <Card className="w-full max-w-lg">
       <CardHeader>
-        <CardTitle className="text-lg">Generating Your Video</CardTitle>
+        <CardTitle className="text-lg">
+          {isV2Pipeline ? "Creating Your Professional Ad" : "Generating Your Video"}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Progress Bar */}
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
             <span className="text-zinc-600 dark:text-zinc-400">
-              {STAGE_LABELS[status.stage]}
+              {stageLabels[status.stage]}
             </span>
             <span className="font-medium">{status.progress}%</span>
           </div>
@@ -134,31 +143,39 @@ export function ProgressTracker({ jobId, onComplete, onError }: ProgressTrackerP
             const isPending = currentStageIndex < stageIndex;
 
             return (
-              <div key={stage} className="flex items-center gap-3">
-                <div
-                  className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
-                    isComplete
-                      ? "bg-green-500 text-white"
-                      : isActive
-                      ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                      : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                  }`}
-                >
-                  {isComplete ? "✓" : stageIndex}
+              <div key={stage} className="flex flex-col gap-1">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-medium ${
+                      isComplete
+                        ? "bg-green-500 text-white"
+                        : isActive
+                        ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
+                        : "bg-zinc-200 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                    }`}
+                  >
+                    {isComplete ? "✓" : stageIndex}
+                  </div>
+                  <span
+                    className={`text-sm ${
+                      isActive
+                        ? "font-medium text-zinc-900 dark:text-zinc-100"
+                        : isPending
+                        ? "text-zinc-400 dark:text-zinc-600"
+                        : "text-zinc-600 dark:text-zinc-400"
+                    }`}
+                  >
+                    {stageLabels[stage]}
+                  </span>
+                  {isActive && (
+                    <div className="ml-auto h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-600 dark:border-t-zinc-100" />
+                  )}
                 </div>
-                <span
-                  className={`text-sm ${
-                    isActive
-                      ? "font-medium text-zinc-900 dark:text-zinc-100"
-                      : isPending
-                      ? "text-zinc-400 dark:text-zinc-600"
-                      : "text-zinc-600 dark:text-zinc-400"
-                  }`}
-                >
-                  {STAGE_LABELS[stage]}
-                </span>
-                {isActive && (
-                  <div className="ml-auto h-4 w-4 animate-spin rounded-full border-2 border-zinc-300 border-t-zinc-900 dark:border-zinc-600 dark:border-t-zinc-100" />
+                {/* Show description for active stage in v2 pipeline */}
+                {isV2Pipeline && isActive && (
+                  <p className="ml-9 text-xs text-zinc-500 dark:text-zinc-400">
+                    {STAGE_DESCRIPTIONS[stage]}
+                  </p>
                 )}
               </div>
             );

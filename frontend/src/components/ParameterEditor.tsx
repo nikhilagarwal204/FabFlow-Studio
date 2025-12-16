@@ -12,17 +12,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import api from "@/lib/api";
+import { modifyParameter, type ModificationResult } from "@/lib/api";
 
 // Types matching backend EnhancedUserInput
 export type MaterialType = "fabric" | "leather" | "metal" | "wood" | "glass" | "plastic" | "ceramic";
 export type StyleMood = "luxury" | "minimal" | "vibrant" | "natural" | "tech";
-
-export interface ParameterModification {
-  parameter_path: string;
-  new_value: string | string[];
-  apply_to_scenes: number[];
-}
 
 interface ParameterEditorProps {
   jobId: string;
@@ -33,12 +27,6 @@ interface ParameterEditorProps {
   onModificationApplied?: (result: ModificationResult) => void;
   onError?: (error: string) => void;
   disabled?: boolean;
-}
-
-interface ModificationResult {
-  modified_scenes: number[];
-  frames_to_regenerate: number[];
-  preserved_parameters: Record<string, unknown>;
 }
 
 const MATERIAL_OPTIONS: { value: MaterialType; label: string }[] = [
@@ -96,18 +84,13 @@ export function ParameterEditor({
     setColorError(null);
 
     try {
-      const modification: ParameterModification = {
+      const result = await modifyParameter(jobId, {
         parameter_path: parameterPath,
         new_value: newValue,
         apply_to_scenes: [], // Empty means apply to all scenes
-      };
+      });
 
-      const response = await api.post<ModificationResult>(
-        `/api/v2/modify-parameter/${jobId}`,
-        modification
-      );
-
-      onModificationApplied?.(response.data);
+      onModificationApplied?.(result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Failed to modify parameter";
       onError?.(errorMessage);

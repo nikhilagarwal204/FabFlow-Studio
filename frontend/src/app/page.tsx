@@ -5,7 +5,7 @@ import { VideoInputForm } from "@/components/VideoInputForm";
 import { ProgressTracker } from "@/components/ProgressTracker";
 import { VideoPlayer } from "@/components/VideoPlayer";
 import { ErrorDisplay } from "@/components/ErrorDisplay";
-import api from "@/lib/api";
+import api, { generateVideoV2, type EnhancedUserInputPayload } from "@/lib/api";
 import type { UserInput } from "@/lib/validation";
 
 type AppState = "input" | "generating" | "complete" | "error";
@@ -21,6 +21,7 @@ export default function Home() {
   const [jobId, setJobId] = useState<string | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isV2Pipeline, setIsV2Pipeline] = useState(false);
 
   const handleSubmit = async (input: UserInput) => {
     setIsLoading(true);
@@ -31,32 +32,42 @@ export default function Home() {
       // Use v2 endpoint if enhanced fields are provided, otherwise use v1
       const hasEnhancedFields = input.material || input.primaryColor || input.secondaryColor || input.styleMood;
       
-      const payload = hasEnhancedFields ? {
-        brand_name: input.brandName,
-        product_name: input.productName,
-        product_description: input.productDescription,
-        duration: input.duration,
-        aspect_ratio: input.aspectRatio,
-        material: input.material || null,
-        primary_color: input.primaryColor || null,
-        secondary_color: input.secondaryColor || null,
-        style_mood: input.styleMood || null,
-      } : {
-        brand_name: input.brandName,
-        product_name: input.productName,
-        product_description: input.productDescription,
-        duration: input.duration,
-        aspect_ratio: input.aspectRatio,
-        product_image_url: null, // Image upload not implemented yet
-      };
+      if (hasEnhancedFields) {
+        // Use v2 API with typed payload
+        const payload: EnhancedUserInputPayload = {
+          brand_name: input.brandName,
+          product_name: input.productName,
+          product_description: input.productDescription,
+          duration: input.duration,
+          aspect_ratio: input.aspectRatio,
+          material: input.material || null,
+          primary_color: input.primaryColor || null,
+          secondary_color: input.secondaryColor || null,
+          style_mood: input.styleMood || null,
+        };
 
-      const endpoint = hasEnhancedFields ? "/api/v2/generate-video" : "/api/generate-video";
-      const response = await api.post<GenerateVideoResponse>(
-        endpoint,
-        payload
-      );
+        const result = await generateVideoV2(payload);
+        setJobId(result.job_id);
+        setIsV2Pipeline(true);
+      } else {
+        // Use v1 API for basic requests
+        const payload = {
+          brand_name: input.brandName,
+          product_name: input.productName,
+          product_description: input.productDescription,
+          duration: input.duration,
+          aspect_ratio: input.aspectRatio,
+          product_image_url: null, // Image upload not implemented yet
+        };
 
-      setJobId(response.data.job_id);
+        const response = await api.post<GenerateVideoResponse>(
+          "/api/generate-video",
+          payload
+        );
+        setJobId(response.data.job_id);
+        setIsV2Pipeline(false);
+      }
+
       setAppState("generating");
     } catch (err) {
       console.error("Failed to start video generation:", err);
@@ -87,6 +98,7 @@ export default function Home() {
     setVideoUrl(null);
     setError(null);
     setIsLoading(false);
+    setIsV2Pipeline(false);
   }, []);
 
   return (
@@ -112,6 +124,7 @@ export default function Home() {
             jobId={jobId}
             onComplete={handleComplete}
             onError={handleError}
+            isV2Pipeline={isV2Pipeline}
           />
         )}
 

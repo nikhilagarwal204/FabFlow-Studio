@@ -100,13 +100,13 @@ This plan enhances FabFlow Studio to leverage FIBO's JSON-native architecture fo
     - Add style mood selector
     - _Requirements: 1.1, 1.2, 1.3_
 
-- [ ] 10. Integration and Polish
-  - [ ] 10.1 Wire frontend to v2 backend endpoints
+- [x] 10. Integration and Polish
+  - [x] 10.1 Wire frontend to v2 backend endpoints
     - Update API client for v2 endpoints
     - Connect parameter editor to modify-parameter endpoint
     - Update progress tracker for new pipeline stages
     - _Requirements: 7.1, 7.2, 7.4_
-  - [ ] 10.2 Update storyboard preview for structured parameters
+  - [x] 10.2 Update storyboard preview for structured parameters
     - Display camera, lighting, composition details
     - Show material and color palette
     - _Requirements: 2.2_
