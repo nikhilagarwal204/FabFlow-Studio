@@ -109,12 +109,12 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Return video URL when job is complete
     - _Requirements: 5.4, 6.4_
 
-- [ ] 8. Frontend UI Components
-  - [ ] 8.1 Create progress tracker component
+- [x] 8. Frontend UI Components
+  - [x] 8.1 Create progress tracker component
     - Poll backend for job status
     - Display current pipeline stage with progress bar
     - _Requirements: 6.1, 6.2_
-  - [ ] 8.2 Create video player component
+  - [x] 8.2 Create video player component
     - Display final video with playback controls
     - Provide download button
     - _Requirements: 5.4, 6.4_
