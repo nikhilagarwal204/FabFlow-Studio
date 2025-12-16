@@ -74,8 +74,8 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Exponential backoff between retries
     - _Requirements: 4.3_
 
-- [ ] 5. Frame Generation Pipeline (Backend)
-  - [ ] 5.1 Create frame generator service
+- [x] 5. Frame Generation Pipeline (Backend)
+  - [x] 5.1 Create frame generator service
     - Calculate frame count based on scene duration
     - Generate key frame for each scene using FIBO
     - Download and store frames locally
