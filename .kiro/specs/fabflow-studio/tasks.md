@@ -123,8 +123,8 @@ Architecture: Next.js frontend (Vercel) + FastAPI backend (Railway/Render)
     - Provide retry options
     - _Requirements: 6.3_
 
-- [ ] 9. End-to-End Integration
-  - [ ] 9.1 Wire up frontend to backend
+- [x] 9. End-to-End Integration
+  - [x] 9.1 Wire up frontend to backend
     - Connect form submission to /api/generate-video
     - Poll job status and update progress UI
     - Display video when complete

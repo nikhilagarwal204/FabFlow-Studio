@@ -61,7 +61,12 @@ export function ProgressTracker({ jobId, onComplete, onError }: ProgressTrackerP
           // Fetch the result to get the video URL
           const resultResponse = await api.get(`/api/job/${jobId}/result`);
           if (resultResponse.data.success && resultResponse.data.video_url) {
-            onComplete(resultResponse.data.video_url);
+            // Construct full URL using the API base URL
+            const baseUrl = api.defaults.baseURL || "";
+            const videoUrl = resultResponse.data.video_url.startsWith("http")
+              ? resultResponse.data.video_url
+              : `${baseUrl}${resultResponse.data.video_url}`;
+            onComplete(videoUrl);
           }
         } else if (jobStatus.stage === "error") {
           setPolling(false);
